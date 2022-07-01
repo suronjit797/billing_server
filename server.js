@@ -102,10 +102,10 @@ async function run() {
         /*******************
         ****** bills *******
         *******************/
-        app.get('/api/billing-list', async (req, res) => {
+        app.get('/api/billing-list', jwtVerify, async (req, res) => {
             const limit = 10
             const skip = req.query.skip || 0
-            const result = await billsCollection.find().skip(parseInt(skip)).limit(limit).toArray()
+            const result = await billsCollection.find().sort({ _id: -1 }).skip(parseInt(skip)).limit(limit).toArray()
             res.send(result)
         })
 
@@ -130,7 +130,8 @@ async function run() {
         })
 
         // total amount
-        app.get('/api/total-amount', async (req, res) => {
+        app.get('/api/total-amount', jwtVerify, async (req, res) => {
+            const { email } = req.decoded
             const result = await billsCollection.find().toArray()
             let totalAmount = 0
             result.forEach(bill => totalAmount += parseInt(bill.amount))
@@ -138,7 +139,8 @@ async function run() {
         })
 
         // for pagination
-        app.get('/api/db-length', async (req, res) => {
+        app.get('/api/db-length', jwtVerify, async (req, res) => {
+            const { email } = req.decoded
             const result = await billsCollection.countDocuments()
             res.send({ result })
         })

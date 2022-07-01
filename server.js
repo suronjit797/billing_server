@@ -41,26 +41,35 @@ async function run() {
 ****** user *******
 *******************/
         app.get('/api/billing-list', async (req, res) => {
-            const result = await billsCollection.find().toArray()
+            const limit = 10
+            const skip = req.query.skip || 0
+
+            const result = await billsCollection.find().skip(parseInt(skip)).limit(limit).toArray()
             res.send(result)
         })
 
         app.post('/api/add-billing', async (req, res) => {
             const data = req.body
-            console.log(data)
-            res.send({ message: 'bill' })
+            const result = await billsCollection.insertOne(data)
+            res.send(result)
         })
 
         app.post('/api/add-billing', async (req, res) => {
             res.send({ message: 'bill' })
         })
 
-        app.post('/api/update-billing/:id', async (req, res) => {
+        app.put('/api/update-billing/:id', async (req, res) => {
+            const { name, email, phone, amount } = req.body
+            const id = req.params.id
+            const filter = { _id: ObjectId(id) }
+            const result = await billsCollection.updateOne(filter, { $set: { name, email, phone, amount } }, { upsert: true })
             res.send({ message: 'bill' })
         })
 
-        app.post('/api/delete-billing/:id', async (req, res) => {
-            res.send({ message: 'bill' })
+        app.delete('/api/delete-billing/:id', async (req, res) => {
+            const id = req.params.id
+            const result = await billsCollection.deleteOne({ _id: ObjectId(id) })
+            res.send(result)
         })
 
     }

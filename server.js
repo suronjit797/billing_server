@@ -105,7 +105,6 @@ async function run() {
         app.get('/api/billing-list', async (req, res) => {
             const limit = 10
             const skip = req.query.skip || 0
-
             const result = await billsCollection.find().skip(parseInt(skip)).limit(limit).toArray()
             res.send(result)
         })
@@ -129,6 +128,21 @@ async function run() {
             const result = await billsCollection.deleteOne({ _id: ObjectId(id) })
             res.send(result)
         })
+
+        // total amount
+        app.get('/api/total-amount', async (req, res) => {
+            const result = await billsCollection.find().toArray()
+            let totalAmount = 0
+            result.forEach(bill => totalAmount += parseInt(bill.amount))
+            res.send({ totalAmount })
+        })
+
+        // for pagination
+        app.get('/api/db-length', async (req, res) => {
+            const result = await billsCollection.countDocuments()
+            res.send({ result })
+        })
+
 
     }
     finally {

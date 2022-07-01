@@ -102,10 +102,31 @@ async function run() {
         /*******************
         ****** bills *******
         *******************/
-        app.get('/api/billing-list', jwtVerify, async (req, res) => {
+        app.get('/api/billing-list', /* jwtVerify, */ async (req, res) => {
+
+            const search = req.query.search || ''
+
+            const filter = search ? {
+                $and: [
+                    {
+                        $or: [
+                            {
+                                name: search
+                            },
+                            {
+                                email: search
+                            },
+                            {
+                                phone: search
+                            }
+                        ]
+                    }
+                ]
+            } : {}
+
             const limit = 10
             const skip = req.query.skip || 0
-            const result = await billsCollection.find().sort({ _id: -1 }).skip(parseInt(skip)).limit(limit).toArray()
+            const result = await billsCollection.find(filter).sort({ _id: -1 }).skip(parseInt(skip)).limit(limit).toArray()
             res.send(result)
         })
 
@@ -140,12 +161,29 @@ async function run() {
 
         // for pagination
         app.get('/api/db-length', jwtVerify, async (req, res) => {
-            const { email } = req.decoded
-            const result = await billsCollection.countDocuments()
+            // const { email } = req.decoded
+
+            const search = req.query.search
+            const filter = search ? {
+                $and: [
+                    {
+                        $or: [
+                            {
+                                name: search
+                            },
+                            {
+                                email: search
+                            },
+                            {
+                                phone: search
+                            }
+                        ]
+                    }
+                ]
+            } : {}
+            const result = await billsCollection.countDocuments(filter)
             res.send({ result })
         })
-
-
     }
     finally {
 

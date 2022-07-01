@@ -38,65 +38,84 @@ async function run() {
             const result = await userCollection.find().toArray()
             res.send(result)
         })
+
+        // register
         app.post('/api/registration', async (req, res) => {
             const { name, email, password } = req.body
             // -------------------------------password has----------------------------------------------------
-            const user = { name, email, password }
             const isUser = await userCollection.findOne({ email })
-            if (isUser) {
+            if (!!isUser) {
                 return res.status(406).send({ message: "User Already Exist" })
             }
 
             bcrypt.hash(password, saltRounds, async (err, hash) => {
-                if(err) {
+                if (err) {
                     return res.status(500).send({ message: "Server Error Occurred" })
                 }
                 const result = await userCollection.insertOne({ name, email, password: hash })
                 res.send(result)
             });
-
-
-
         })
+
+        // login
         app.post('/api/login', async (req, res) => {
-            res.send({ message: 'auth' })
-        })
+            const { email: userEmail, password: userPassword } = req.body
+            const isUser = await userCollection.findOne({ email: userEmail })
+            if (!isUser) {
+                return res.status(401).send({ message: "User Not Found" })
+            }
+            const { name, email, password } = isUser
 
-        /*******************
+            const match = await bcrypt.compare(userPassword, password);
+
+            if(!match){
+                return res.status(401).send({ message: "Password does not match" })
+            }
+
+            
+
+
+
+            console.log(match)
+
+        res.send({ message: 'auth' })
+    })
+
+    /*******************
 ****** user *******
 *******************/
-        app.get('/api/billing-list', async (req, res) => {
-            const limit = 10
-            const skip = req.query.skip || 0
+    app.get('/api/billing-list', async (req, res) => {
+        const limit = 10
+        const skip = req.query.skip || 0
 
-            const result = await billsCollection.find().skip(parseInt(skip)).limit(limit).toArray()
-            res.send(result)
-        })
+        const result = await billsCollection.find().skip(parseInt(skip)).limit(limit).toArray()
+        res.send(result)
+    })
 
-        app.post('/api/add-billing', async (req, res) => {
-            const data = req.body
-            const result = await billsCollection.insertOne(data)
-            res.send(result)
-        })
+    app.post('/api/add-billing', async (req, res) => {
+        const data = req.body
+        const result = await billsCollection.insertOne(data)
+        res.send(result)
+    })
 
-        app.put('/api/update-billing/:id', async (req, res) => {
-            const { name, email, phone, amount } = req.body
-            const id = req.params.id
-            const filter = { _id: ObjectId(id) }
-            const result = await billsCollection.updateOne(filter, { $set: { name, email, phone, amount } }, { upsert: true })
-            res.send({ message: 'bill' })
-        })
+    app.put('/api/update-billing/:id', async (req, res) => {
+        const { name, email, phone, amount } = req.body
+        const id = req.params.id
+        const filter = { _id: ObjectId(id) }
+        const result = await billsCollection.updateOne(filter, { $set: { name, email, phone, amount } }, { upsert: true })
+        res.send({ message: 'bill' })
+    })
 
-        app.delete('/api/delete-billing/:id', async (req, res) => {
-            const id = req.params.id
-            const result = await billsCollection.deleteOne({ _id: ObjectId(id) })
-            res.send(result)
-        })
+    app.delete('/api/delete-billing/:id', async (req, res) => {
+        const id = req.params.id
+        const result = await billsCollection.deleteOne({ _id: ObjectId(id) })
+        res.send(result)
+    })
 
-    }
+}
     finally {
 
-    }
+}
 
 }
 

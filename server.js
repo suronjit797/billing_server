@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 const app = express()
 const port = process.env.PORT || 5000
@@ -12,6 +13,22 @@ app.use(express.json())
 app.use(cors())
 
 
+
+// jwt verify
+const jwtVerify = async (req, res, next) => {
+    const authHeaders = req.headers.authorization
+    if (!authHeaders) {
+        return res.status(401).send({ message: 'unauthorized access' })
+    }
+    const token = authHeaders.split(' ')[1]
+    jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(403).send({ message: 'forbidden access' })
+        }
+        req.decoded = decoded
+        next()
+    })
+}
 
 // monogoDB
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.bupbu.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
@@ -42,7 +59,6 @@ async function run() {
         // register
         app.post('/api/registration', async (req, res) => {
             const { name, email, password } = req.body
-            // -------------------------------password has----------------------------------------------------
             const isUser = await userCollection.findOne({ email })
             if (!!isUser) {
                 return res.status(406).send({ message: "User Already Exist" })
@@ -53,7 +69,10 @@ async function run() {
                     return res.status(500).send({ message: "Server Error Occurred" })
                 }
                 const result = await userCollection.insertOne({ name, email, password: hash })
-                res.send(result)
+                if (result) {
+                    const token = jwt.sign({ name, email, isAuth: true }, process.env.TOKEN_SECRET);
+                    res.send({ token })
+                }
             });
         })
 
@@ -65,57 +84,56 @@ async function run() {
                 return res.status(401).send({ message: "User Not Found" })
             }
             const { name, email, password } = isUser
-
             const match = await bcrypt.compare(userPassword, password);
-
-            if(!match){
+            if (!match) {
                 return res.status(401).send({ message: "Password does not match" })
             }
+            const token = jwt.sign({ name, email, isAuth: true }, process.env.TOKEN_SECRET);
+            res.send({ token })
+        })
 
-            
+        // jwt
 
+        app.get('/jwt-verify', jwtVerify, async (req, res) => {
+            const decoded = req.decoded
+            res.send(decoded)
+        })
 
+        /*******************
+        ****** bills *******
+        *******************/
+        app.get('/api/billing-list', async (req, res) => {
+            const limit = 10
+            const skip = req.query.skip || 0
 
-            console.log(match)
+            const result = await billsCollection.find().skip(parseInt(skip)).limit(limit).toArray()
+            res.send(result)
+        })
 
-        res.send({ message: 'auth' })
-    })
+        app.post('/api/add-billing', async (req, res) => {
+            const data = req.body
+            const result = await billsCollection.insertOne(data)
+            res.send(result)
+        })
 
-    /*******************
-****** user *******
-*******************/
-    app.get('/api/billing-list', async (req, res) => {
-        const limit = 10
-        const skip = req.query.skip || 0
+        app.put('/api/update-billing/:id', async (req, res) => {
+            const { name, email, phone, amount } = req.body
+            const id = req.params.id
+            const filter = { _id: ObjectId(id) }
+            const result = await billsCollection.updateOne(filter, { $set: { name, email, phone, amount } }, { upsert: true })
+            res.send({ message: 'bill' })
+        })
 
-        const result = await billsCollection.find().skip(parseInt(skip)).limit(limit).toArray()
-        res.send(result)
-    })
+        app.delete('/api/delete-billing/:id', async (req, res) => {
+            const id = req.params.id
+            const result = await billsCollection.deleteOne({ _id: ObjectId(id) })
+            res.send(result)
+        })
 
-    app.post('/api/add-billing', async (req, res) => {
-        const data = req.body
-        const result = await billsCollection.insertOne(data)
-        res.send(result)
-    })
-
-    app.put('/api/update-billing/:id', async (req, res) => {
-        const { name, email, phone, amount } = req.body
-        const id = req.params.id
-        const filter = { _id: ObjectId(id) }
-        const result = await billsCollection.updateOne(filter, { $set: { name, email, phone, amount } }, { upsert: true })
-        res.send({ message: 'bill' })
-    })
-
-    app.delete('/api/delete-billing/:id', async (req, res) => {
-        const id = req.params.id
-        const result = await billsCollection.deleteOne({ _id: ObjectId(id) })
-        res.send(result)
-    })
-
-}
+    }
     finally {
 
-}
+    }
 
 }
 

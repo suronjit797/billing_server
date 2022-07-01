@@ -2,9 +2,11 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const bcrypt = require('bcrypt');
 
 const app = express()
 const port = process.env.PORT || 5000
+const saltRounds = 7;
 
 app.use(express.json())
 app.use(cors())
@@ -30,8 +32,31 @@ async function run() {
         /*******************
         ****** user *******
         *******************/
+
+        // get all user
+        app.get('/api/users', async (req, res) => {
+            const result = await userCollection.find().toArray()
+            res.send(result)
+        })
         app.post('/api/registration', async (req, res) => {
-            res.send({ message: 'auth' })
+            const { name, email, password } = req.body
+            // -------------------------------password has----------------------------------------------------
+            const user = { name, email, password }
+            const isUser = await userCollection.findOne({ email })
+            if (isUser) {
+                return res.status(406).send({ message: "User Already Exist" })
+            }
+
+            bcrypt.hash(password, saltRounds, async (err, hash) => {
+                if(err) {
+                    return res.status(500).send({ message: "Server Error Occurred" })
+                }
+                const result = await userCollection.insertOne({ name, email, password: hash })
+                res.send(result)
+            });
+
+
+
         })
         app.post('/api/login', async (req, res) => {
             res.send({ message: 'auth' })
@@ -52,10 +77,6 @@ async function run() {
             const data = req.body
             const result = await billsCollection.insertOne(data)
             res.send(result)
-        })
-
-        app.post('/api/add-billing', async (req, res) => {
-            res.send({ message: 'bill' })
         })
 
         app.put('/api/update-billing/:id', async (req, res) => {
